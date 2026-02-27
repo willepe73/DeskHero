@@ -1,0 +1,104 @@
+from __future__ import annotations
+
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from ..db import get_session
+from ..models import Building, Floor, Reservation, Seat
+from ..schemas import ReservationCreate, ReservationOut
+
+
+router = APIRouter(prefix="/reservations", tags=["reservations"])
+
+
+def _reservation_to_out(res: Reservation) -> ReservationOut:
+    seat = res.seat
+    floor = seat.floor
+    building = floor.building
+    return ReservationOut(
+        id=res.id,
+        building=building.name,
+        floor=floor.floor_number,
+        seat_number=seat.seat_number,
+        date=res.date,
+        reserved_by=res.reserved_by,
+        created_at=res.created_at,
+    )
+
+
+@router.post("", response_model=ReservationOut, status_code=201)
+def reserve_seat(payload: ReservationCreate, db: Session = Depends(get_session)) -> ReservationOut:
+    building = db.scalar(
+        select(Building).where(func.lower(Building.name) == payload.building.lower())
+    )
+    if not building:
+        raise HTTPException(status_code=404, detail="Unknown building")
+
+    floor = db.scalar(
+        select(Floor).where(
+            Floor.building_id == building.id,
+            Floor.floor_number == payload.floor,
+        )
+    )
+    if not floor:
+        raise HTTPException(status_code=404, detail="Unknown floor")
+
+    seat = db.scalar(
+        select(Seat).where(
+            Seat.floor_id == floor.id,
+            Seat.seat_number == payload.seat_number,
+        )
+    )
+    if not seat:
+        raise HTTPException(status_code=404, detail="Unknown seat")
+
+    res = Reservation(seat_id=seat.id, date=payload.date, reserved_by=payload.reserved_by)
+    db.add(res)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Seat already reserved for that date")
+
+    db.refresh(res)
+    return _reservation_to_out(res)
+
+
+@router.get("", response_model=list[ReservationOut])
+def list_reservations(date: date, db: Session = Depends(get_session)) -> list[ReservationOut]:
+    stmt = (
+        select(Reservation)
+        .where(Reservation.date == date)
+        .order_by(Reservation.created_at.asc())
+    )
+    reservations = list(db.scalars(stmt).all())
+
+    # Ensure relationships are available for serialization.
+    for r in reservations:
+        _ = r.seat.floor.building
+
+    return [_reservation_to_out(r) for r in reservations]
+
+
+@router.get("/upcoming", response_model=list[ReservationOut])
+def list_upcoming_reservations(
+    from_date: date,
+    db: Session = Depends(get_session),
+) -> list[ReservationOut]:
+    stmt = (
+        select(Reservation)
+        .where(Reservation.date >= from_date)
+        .order_by(Reservation.date.asc(), Reservation.created_at.asc())
+    )
+    reservations = list(db.scalars(stmt).all())
+
+    for r in reservations:
+        _ = r.seat.floor.building
+
+    return [_reservation_to_out(r) for r in reservations]
+
+

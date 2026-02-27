@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+SQLAlchemy
+pydantic-settings
+pytesseract
+Pillow
+
+
