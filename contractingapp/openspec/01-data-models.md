@@ -30,6 +30,7 @@ Represents an independent contractor.
 * `last_name` (String, Required)
 * `purchase_rate` (Decimal, Required)
 * `fixed` (Boolean, Default: false) - Indicates if the freelance consultant has a fixed engagement or rate
+* `contracts` (Array of `Contract` objects, Optional)
 * `status` (Enum: `active`, `inactive`, Default: `active`)
 * `created_at` (Timestamp)
 * `updated_at` (Timestamp)
@@ -41,6 +42,7 @@ Represents an internal employee.
 * `last_name` (String, Required)
 * `cronos_cost_price_220d` (Decimal, Required)
 * `cronos_cost_price_180d` (Decimal, Required)
+* `contracts` (Array of `Contract` objects, Optional)
 * `status` (Enum: `active`, `inactive`, Default: `active`)
 * `created_at` (Timestamp)
 * `updated_at` (Timestamp)
@@ -48,6 +50,7 @@ Represents an internal employee.
 ### `Contract`
 Binding agreement between a freelance profile or employee profile and their Consultancy Company.
 * `id` (UUID, Primary Key)
+* `name` (String, Required) - A descriptive title for the contract (e.g., "Senior React Developer - Q3")
 * `consultancy_company_id` (FK to `ConsultancyCompany`, Required)
 * `profile_type` (Enum: `freelance`, `employee`, Required)
 * `freelance_id` (FK to `FreelanceProfile`, Optional - required if profile_type is freelance)
@@ -56,6 +59,7 @@ Binding agreement between a freelance profile or employee profile and their Cons
 * `end_date` (Date, Optional)
 * `pdf_blob_storage_id` (String, Optional) - Reference to document in blob storage (primarily for freelancers)
 * `max_budget` (Decimal, Optional)
+* `assignments` (Array of `Assignment` objects, Optional)
 * `remarks` (Text, Optional)
 * `status` (Enum: `active`, `terminated`, Default: `active`)
 * `created_at` (Timestamp)

@@ -11,14 +11,14 @@ All endpoints utilize RESTful conventions, returning JSON payloads. Assume stand
 *Note: For `managing_partner` roles, all GET requests are implicitly filtered to only return profiles (and sub-resources) associated with `ConsultancyCompany` records they are authorized to access via the `company_ids` claims within their JWT. Global `admin` users can see all profiles.*
 
 ### `GET /profiles/freelance`
-List all freelance profiles.
+List all freelance profiles along with their associated `contracts`.
 
 ### `POST /profiles/freelance`
 Create a new freelance profile.
 * **Payload:** `first_name`, `last_name`, `purchase_rate`, `fixed`
 
 ### `GET /profiles/employee`
-List all employee profiles.
+List all employee profiles along with their associated `contracts`.
 
 ### `POST /profiles/employee`
 Create a new employee profile.
@@ -29,13 +29,14 @@ Create a new employee profile.
 *Note: `managing_partner` users will only see contracts belonging to a `consultancy_company_id` they manage, indicated by the claims within their JWT. Global `admin` users can see all contracts.*
 
 ### `GET /contracts`
-List contracts with filtering capabilities (by consultancy company, profile, or status).
+List contracts with filtering capabilities (by consultancy company, profile, or status), returned along with their associated `assignments`.
 
 ### `POST /contracts`
 Create a new contract binding a profile (freelance or employee) to a consultancy company.
 * **Payload Structure:**
   ```json
   {
+    "name": "Senior React Developer - Q3",
     "consultancy_company_id": "uuid",
     "profile_type": "freelance",
     "freelance_id": "uuid",

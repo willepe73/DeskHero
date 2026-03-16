@@ -34,9 +34,10 @@ A specialized web application for managing freelance consultants and employees, 
 - An assignment can be retrieved by the timesheet code.
 
 ## Architectural Principles
-- **API-First Design:** All functionality must be exposed via a RESTful JSON API before any frontend UI is built. The frontend will be a consumer of this API. The API is structured into a separated folder.
+- **Technology Stack API and database:** Python, FastAPI, Prisma, PostgreSQL 
+- **Technology Stack Frontend:** React, Next.js 
+- **API-First Design:** All functionality must be exposed via a RESTful JSON API before any frontend UI is built. The frontend will be a consumer of this API. The API is structured into a separated folder. A open AI spec is provided for the API.
 - **Frontend website:** A frontend website will be built to consume the API and provide a user interface for managing consultants and contracts. Separation of concerns between frontend and backend is mandatory. The frontend is structured into a separated folder.
-- **Stateless Authentication:** JWT-based authentication for securing API endpoints.
-- **Database:** Relational PostgreSQL database for transactional integrity, specifically around financial records (rates, invoices).
-- **Local Database:** When testing locally, an in memory db is used which is prefilled with anonymous data.
-
+- **Stateless Authentication:** JWT-based authentication including role based access control for securing API endpoints.
+- **Database:** Relational PostgreSQL database for transactional integrity, when testing locally, an in memory db is used which is prefilled with anonymous data.
+- **Quickstart:** Provide a quickstart guide for installing and running the application locally. This should include all steps necessary to get the application up and running, including database setup and any other dependencies.
