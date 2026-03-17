@@ -1,0 +1,124 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+model ConsultancyCompany {
+  id          String             @id @default(cuid())
+  name        String
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  contracts   Contract[]
+  freelancers FreelanceProfile[]
+  employees   EmployeeProfile[]
+
+  @@map("consultancy_companies")
+}
+
+model Client {
+  id             String       @id @default(cuid())
+  name           String
+  type           String       // intercompany | end_client
+  billingAddress String?      @map("billing_address")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  assignments    Assignment[] @relation("ClientAssignments")
+  endAssignments Assignment[] @relation("EndClientAssignments")
+
+  @@map("clients")
+}
+
+model FreelanceProfile {
+  id        String             @id @default(cuid())
+  companyId String             @map("company_id")
+  firstName String             @map("first_name")
+  lastName  String             @map("last_name")
+  fixed     Boolean            @default(false)
+  status    String             @default("active") // active | inactive
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+  company   ConsultancyCompany @relation(fields: [companyId], references: [id])
+  contracts Contract[]
+
+  @@map("freelance_profiles")
+}
+
+model EmployeeProfile {
+  id                  String             @id @default(cuid())
+  companyId           String             @map("company_id")
+  firstName           String             @map("first_name")
+  lastName            String             @map("last_name")
+  cronosCostPrice220d Float              @map("cronos_cost_price_220d")
+  cronosCostPrice180d Float              @map("cronos_cost_price_180d")
+  status              String             @default("active") // active | inactive
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  company             ConsultancyCompany @relation(fields: [companyId], references: [id])
+  assignments         Assignment[]
+
+  @@map("employee_profiles")
+}
+
+model Contract {
+  id                   String             @id @default(cuid())
+  name                 String
+  consultancyCompanyId String             @map("consultancy_company_id")
+  freelanceId          String             @map("freelance_id")
+  purchaseRate         Float              @map("purchase_rate")
+  startDate            DateTime           @map("start_date")
+  endDate              DateTime           @map("end_date")
+  pdfBlobStorageId     String?            @map("pdf_blob_storage_id")
+  remarks              String?
+  status               String             @default("active") // active | terminated
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  consultancyCompany   ConsultancyCompany @relation(fields: [consultancyCompanyId], references: [id])
+  freelanceProfile     FreelanceProfile   @relation(fields: [freelanceId], references: [id])
+  assignments          Assignment[]
+
+  @@map("contracts")
+}
+
+model Assignment {
+  id              String           @id @default(cuid())
+  contractId      String?          @map("contract_id")
+  employeeId      String?          @map("employee_id")
+  clientId        String           @map("client_id")
+  endClientId     String           @map("end_client_id")
+  timesheetCode   String           @map("timesheet_code")
+  startDate       DateTime         @map("start_date")
+  endDate         DateTime         @map("end_date")
+  clientTariff    Float            @map("client_tariff")
+  endTariff       Float?           @map("end_tariff")
+  tariffType      String           @map("tariff_type")  // percentage | 50_50 | end_tariff
+  remarks         String?
+  status          String           @default("active")   // active | completed | cancelled
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  contract        Contract?        @relation(fields: [contractId], references: [id])
+  employeeProfile EmployeeProfile? @relation(fields: [employeeId], references: [id])
+  client          Client           @relation("ClientAssignments", fields: [clientId], references: [id])
+  endClient       Client           @relation("EndClientAssignments", fields: [endClientId], references: [id])
+
+  @@map("assignments")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  hashedPassword String   @map("hashed_password")
+  role           String   // admin | managing_partner
+  companyIds     String   @default("[]") @map("company_ids") // JSON string of UUID array
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
