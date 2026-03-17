@@ -14,7 +14,7 @@ import {
   MapPin,
   AlertTriangle,
 } from 'lucide-react';
-import { clientsApi, assignmentsApi, getApiErrorMessage } from '@/lib/api';
+import { clientsApi, companiesApi, assignmentsApi, getApiErrorMessage } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import type { Client } from '@/lib/types';
 import Button from '@/components/ui/Button';
@@ -256,6 +256,7 @@ export default function ClientsPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [companyFilter, setCompanyFilter] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -269,12 +270,18 @@ export default function ClientsPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  const { data: companies } = useQuery({
+    queryKey: ['companies-filter'],
+    queryFn: () => companiesApi.list({ size: 100 }),
+  });
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['clients', debouncedSearch, typeFilter, page],
+    queryKey: ['clients', debouncedSearch, typeFilter, companyFilter, page],
     queryFn: () =>
       clientsApi.list({
         search: debouncedSearch,
         type: typeFilter || undefined,
+        company_id: companyFilter || undefined,
         page,
         size: PAGE_SIZE,
       }),
@@ -306,13 +313,12 @@ export default function ClientsPage() {
       </div>
 
       {/* Filters */}
-      <div className="card p-4 flex gap-3 flex-wrap">
+      <div className="card p-4 grid grid-cols-3 gap-3">
         <Input
           placeholder="Search clients…"
           leftAddon={<Search size={15} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-56"
         />
         <Select
           options={[
@@ -322,7 +328,14 @@ export default function ClientsPage() {
           ]}
           value={typeFilter}
           onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
-          className="w-40"
+        />
+        <Select
+          options={[
+            { value: '', label: 'All Companies' },
+            ...(companies?.items.map((c) => ({ value: c.id, label: c.name })) ?? []),
+          ]}
+          value={companyFilter}
+          onChange={(e) => { setCompanyFilter(e.target.value); setPage(1); }}
         />
       </div>
 
@@ -339,7 +352,7 @@ export default function ClientsPage() {
           <div className="flex flex-col items-center justify-center py-16 text-gray-400">
             <Briefcase size={40} className="mb-3 text-gray-200" />
             <p className="text-sm font-medium">No clients found</p>
-            {!debouncedSearch && !typeFilter && (
+            {!debouncedSearch && !typeFilter && !companyFilter && (
               <Button variant="primary" size="sm" className="mt-3" onClick={openCreate}>
                 Add your first client
               </Button>

@@ -120,6 +120,7 @@ export const freelancersApi = {
   list: async (params?: {
     search?: string;
     status?: string;
+    company_id?: string;
     page?: number;
     size?: number;
   }): Promise<PaginatedResponse<FreelanceProfile>> => {
@@ -164,6 +165,7 @@ export const employeesApi = {
   list: async (params?: {
     search?: string;
     status?: string;
+    company_id?: string;
     page?: number;
     size?: number;
   }): Promise<PaginatedResponse<EmployeeProfile>> => {
@@ -208,6 +210,7 @@ export const clientsApi = {
   list: async (params?: {
     search?: string;
     type?: string;
+    company_id?: string;
     page?: number;
     size?: number;
   }): Promise<PaginatedResponse<Client>> => {
@@ -281,7 +284,7 @@ export const contractsApi = {
     const formData = new FormData();
     formData.append('file', file);
     const res = await apiClient.post<Contract>(
-      `/contracts/${id}/upload-pdf`,
+      `/contracts/${id}/pdf`,
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
@@ -289,9 +292,14 @@ export const contractsApi = {
   },
 
   downloadPdf: async (id: string): Promise<Blob> => {
-    const res = await apiClient.get(`/contracts/${id}/download-pdf`, {
+    const res = await apiClient.get(`/contracts/${id}/pdf/download`, {
       responseType: 'blob',
     });
+    return res.data;
+  },
+
+  deletePdf: async (id: string): Promise<Contract> => {
+    const res = await apiClient.delete<Contract>(`/contracts/${id}/pdf`);
     return res.data;
   },
 };

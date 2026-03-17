@@ -15,7 +15,7 @@ import {
   UserX,
   AlertTriangle,
 } from 'lucide-react';
-import { freelancersApi, employeesApi, getApiErrorMessage } from '@/lib/api';
+import { freelancersApi, employeesApi, companiesApi, getApiErrorMessage } from '@/lib/api';
 import { formatCurrency, formatDate, getFullName } from '@/lib/utils';
 import type { FreelanceProfile, EmployeeProfile } from '@/lib/types';
 import Button from '@/components/ui/Button';
@@ -29,6 +29,7 @@ import { useToast } from '@/components/ui/Toast';
 // ─── Freelancer Form ──────────────────────────────────────────────────────────
 
 const freelancerSchema = z.object({
+  company_id: z.string().min(1, 'Consulting company is required'),
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   fixed: z.boolean(),
@@ -50,6 +51,13 @@ function FreelancerFormModal({
   const { success, error: toastError } = useToast();
   const isEditing = Boolean(profile);
 
+  const { data: companies } = useQuery({
+    queryKey: ['companies-select'],
+    queryFn: () => companiesApi.list({ size: 100 }),
+  });
+
+  const companyOptions = companies?.items.map((c) => ({ value: c.id, label: c.name })) ?? [];
+
   const {
     register,
     handleSubmit,
@@ -58,6 +66,7 @@ function FreelancerFormModal({
   } = useForm<FreelancerForm>({
     resolver: zodResolver(freelancerSchema),
     defaultValues: {
+      company_id: profile?.company_id ?? '',
       first_name: profile?.first_name ?? '',
       last_name: profile?.last_name ?? '',
       fixed: profile?.fixed ?? false,
@@ -68,6 +77,7 @@ function FreelancerFormModal({
   React.useEffect(() => {
     if (isOpen) {
       reset({
+        company_id: profile?.company_id ?? '',
         first_name: profile?.first_name ?? '',
         last_name: profile?.last_name ?? '',
         fixed: profile?.fixed ?? false,
@@ -125,6 +135,14 @@ function FreelancerFormModal({
       }
     >
       <form className="space-y-4">
+        <Select
+          label="Consulting Company"
+          placeholder="Select a company…"
+          options={companyOptions}
+          error={errors.company_id?.message}
+          required
+          {...register('company_id')}
+        />
         <div className="grid grid-cols-2 gap-4">
           <Input
             label="First Name"
@@ -169,6 +187,7 @@ function FreelancerFormModal({
 // ─── Employee Form ────────────────────────────────────────────────────────────
 
 const employeeSchema = z.object({
+  company_id: z.string().min(1, 'Consulting company is required'),
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   cronos_cost_price_220d: z.coerce
@@ -195,6 +214,13 @@ function EmployeeFormModal({
   const { success, error: toastError } = useToast();
   const isEditing = Boolean(profile);
 
+  const { data: companies } = useQuery({
+    queryKey: ['companies-select'],
+    queryFn: () => companiesApi.list({ size: 100 }),
+  });
+
+  const companyOptions = companies?.items.map((c) => ({ value: c.id, label: c.name })) ?? [];
+
   const {
     register,
     handleSubmit,
@@ -203,6 +229,7 @@ function EmployeeFormModal({
   } = useForm<EmployeeForm>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
+      company_id: profile?.company_id ?? '',
       first_name: profile?.first_name ?? '',
       last_name: profile?.last_name ?? '',
       cronos_cost_price_220d: profile?.cronos_cost_price_220d ?? 0,
@@ -214,6 +241,7 @@ function EmployeeFormModal({
   React.useEffect(() => {
     if (isOpen) {
       reset({
+        company_id: profile?.company_id ?? '',
         first_name: profile?.first_name ?? '',
         last_name: profile?.last_name ?? '',
         cronos_cost_price_220d: profile?.cronos_cost_price_220d ?? 0,
@@ -272,6 +300,14 @@ function EmployeeFormModal({
       }
     >
       <form className="space-y-4">
+        <Select
+          label="Consulting Company"
+          placeholder="Select a company…"
+          options={companyOptions}
+          error={errors.company_id?.message}
+          required
+          {...register('company_id')}
+        />
         <div className="grid grid-cols-2 gap-4">
           <Input
             label="First Name"
@@ -339,6 +375,12 @@ function FreelancerDetailModal({
     enabled: Boolean(profileId),
   });
 
+  const { data: company } = useQuery({
+    queryKey: ['company', profile?.company_id],
+    queryFn: () => companiesApi.get(profile!.company_id),
+    enabled: Boolean(profile?.company_id),
+  });
+
   return (
     <Modal
       isOpen={Boolean(profileId)}
@@ -350,7 +392,11 @@ function FreelancerDetailModal({
         <div className="py-8 text-center text-sm text-gray-400">Loading…</div>
       ) : profile ? (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <p className="text-gray-500">Consulting Company</p>
+              <p className="font-medium text-gray-900">{company?.name ?? '—'}</p>
+            </div>
             <div>
               <p className="text-gray-500">Status</p>
               <p className="font-medium text-gray-900 capitalize">{profile.status}</p>
@@ -411,6 +457,12 @@ function EmployeeDetailModal({
     enabled: Boolean(profileId),
   });
 
+  const { data: company } = useQuery({
+    queryKey: ['company', profile?.company_id],
+    queryFn: () => companiesApi.get(profile!.company_id),
+    enabled: Boolean(profile?.company_id),
+  });
+
   return (
     <Modal
       isOpen={Boolean(profileId)}
@@ -423,6 +475,10 @@ function EmployeeDetailModal({
       ) : profile ? (
         <div className="space-y-5">
           <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <p className="text-gray-500">Consulting Company</p>
+              <p className="font-medium text-gray-900">{company?.name ?? '—'}</p>
+            </div>
             <div>
               <p className="text-gray-500">Status</p>
               <p className="font-medium text-gray-900 capitalize">{profile.status}</p>
@@ -458,7 +514,7 @@ function EmployeeDetailModal({
                     <tr key={a.id}>
                       <td className="table-cell font-mono text-xs">{a.timesheet_code}</td>
                       <td className="table-cell">{formatCurrency(a.client_tariff)}</td>
-                      <td className="table-cell capitalize">{a.tariff_type.replace('_', ' ')}</td>
+                      <td className="table-cell">{{ percentage: 'Percentage', '50_50': '50/50', end_tariff: 'End tariff' }[a.tariff_type] ?? a.tariff_type}</td>
                       <td className="table-cell capitalize">{a.status}</td>
                       <td className="table-cell">{formatDate(a.start_date)}</td>
                       <td className="table-cell">{a.end_date ? formatDate(a.end_date) : '—'}</td>
@@ -482,6 +538,7 @@ function FreelancersTab() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [companyFilter, setCompanyFilter] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -495,10 +552,21 @@ function FreelancersTab() {
     return () => clearTimeout(t);
   }, [search]);
 
+  const { data: companies } = useQuery({
+    queryKey: ['companies-filter'],
+    queryFn: () => companiesApi.list({ size: 100 }),
+  });
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['freelancers', debouncedSearch, statusFilter, page],
+    queryKey: ['freelancers', debouncedSearch, statusFilter, companyFilter, page],
     queryFn: () =>
-      freelancersApi.list({ search: debouncedSearch, status: statusFilter || undefined, page, size: PAGE_SIZE }),
+      freelancersApi.list({
+        search: debouncedSearch,
+        status: statusFilter || undefined,
+        company_id: companyFilter || undefined,
+        page,
+        size: PAGE_SIZE,
+      }),
   });
 
   const deleteMutation = useMutation({
@@ -516,29 +584,36 @@ function FreelancersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3 flex-wrap items-center justify-between">
-        <div className="flex gap-2 flex-wrap">
-          <Input
-            placeholder="Search freelancers…"
-            leftAddon={<Search size={15} />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-56"
-          />
-          <Select
-            options={[
-              { value: '', label: 'All Statuses' },
-              { value: 'active', label: 'Active' },
-              { value: 'inactive', label: 'Inactive' },
-            ]}
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="w-36"
-          />
-        </div>
+      <div className="flex justify-end">
         <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={openCreate}>
           Add Freelancer
         </Button>
+      </div>
+
+      <div className="card p-4 grid grid-cols-3 gap-3">
+        <Input
+          placeholder="Search freelancers…"
+          leftAddon={<Search size={15} />}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Select
+          options={[
+            { value: '', label: 'All Statuses' },
+            { value: 'active', label: 'Active' },
+            { value: 'inactive', label: 'Inactive' },
+          ]}
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+        />
+        <Select
+          options={[
+            { value: '', label: 'All Companies' },
+            ...(companies?.items.map((c) => ({ value: c.id, label: c.name })) ?? []),
+          ]}
+          value={companyFilter}
+          onChange={(e) => { setCompanyFilter(e.target.value); setPage(1); }}
+        />
       </div>
 
       <div className="card overflow-hidden">
@@ -640,6 +715,7 @@ function EmployeesTab() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [companyFilter, setCompanyFilter] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -653,10 +729,21 @@ function EmployeesTab() {
     return () => clearTimeout(t);
   }, [search]);
 
+  const { data: companies } = useQuery({
+    queryKey: ['companies-filter'],
+    queryFn: () => companiesApi.list({ size: 100 }),
+  });
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['employees', debouncedSearch, statusFilter, page],
+    queryKey: ['employees', debouncedSearch, statusFilter, companyFilter, page],
     queryFn: () =>
-      employeesApi.list({ search: debouncedSearch, status: statusFilter || undefined, page, size: PAGE_SIZE }),
+      employeesApi.list({
+        search: debouncedSearch,
+        status: statusFilter || undefined,
+        company_id: companyFilter || undefined,
+        page,
+        size: PAGE_SIZE,
+      }),
   });
 
   const deleteMutation = useMutation({
@@ -674,29 +761,36 @@ function EmployeesTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3 flex-wrap items-center justify-between">
-        <div className="flex gap-2 flex-wrap">
-          <Input
-            placeholder="Search employees…"
-            leftAddon={<Search size={15} />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-56"
-          />
-          <Select
-            options={[
-              { value: '', label: 'All Statuses' },
-              { value: 'active', label: 'Active' },
-              { value: 'inactive', label: 'Inactive' },
-            ]}
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="w-36"
-          />
-        </div>
+      <div className="flex justify-end">
         <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={openCreate}>
           Add Employee
         </Button>
+      </div>
+
+      <div className="card p-4 grid grid-cols-3 gap-3">
+        <Input
+          placeholder="Search employees…"
+          leftAddon={<Search size={15} />}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Select
+          options={[
+            { value: '', label: 'All Statuses' },
+            { value: 'active', label: 'Active' },
+            { value: 'inactive', label: 'Inactive' },
+          ]}
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+        />
+        <Select
+          options={[
+            { value: '', label: 'All Companies' },
+            ...(companies?.items.map((c) => ({ value: c.id, label: c.name })) ?? []),
+          ]}
+          value={companyFilter}
+          onChange={(e) => { setCompanyFilter(e.target.value); setPage(1); }}
+        />
       </div>
 
       <div className="card overflow-hidden">

@@ -24,6 +24,7 @@ router = APIRouter(prefix="", tags=["profiles"])
 async def list_freelance(
     search: str | None = None,
     status: str | None = None,
+    company_id: str | None = None,
     page: int = 1,
     size: int = 20,
     current_user: CurrentUser = Depends(get_current_user),
@@ -33,6 +34,8 @@ async def list_freelance(
     where: dict = {}
     if status:
         where["status"] = status
+    if company_id:
+        where["companyId"] = company_id
     if search:
         where["OR"] = [
             {"firstName": {"contains": search}},
@@ -138,6 +141,7 @@ async def delete_freelance(
 async def list_employees(
     search: str | None = None,
     status: str | None = None,
+    company_id: str | None = None,
     page: int = 1,
     size: int = 20,
     current_user: CurrentUser = Depends(get_current_user),
@@ -147,6 +151,8 @@ async def list_employees(
     where: dict = {}
     if status:
         where["status"] = status
+    if company_id:
+        where["companyId"] = company_id
     if search:
         where["OR"] = [
             {"firstName": {"contains": search}},

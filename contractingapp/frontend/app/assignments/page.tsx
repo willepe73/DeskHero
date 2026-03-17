@@ -98,8 +98,8 @@ function AssignmentFormModal({
       client_id: assignment?.client_id ?? '',
       end_client_id: assignment?.end_client_id ?? '',
       timesheet_code: assignment?.timesheet_code ?? '',
-      start_date: assignment?.start_date ?? '',
-      end_date: assignment?.end_date ?? '',
+      start_date: assignment?.start_date?.slice(0, 10) ?? '',
+      end_date: assignment?.end_date?.slice(0, 10) ?? '',
       client_tariff: assignment?.client_tariff ?? 0,
       end_tariff: assignment?.end_tariff ?? '',
       tariff_type: assignment?.tariff_type ?? 'percentage',
@@ -120,8 +120,8 @@ function AssignmentFormModal({
         client_id: assignment?.client_id ?? '',
         end_client_id: assignment?.end_client_id ?? '',
         timesheet_code: assignment?.timesheet_code ?? '',
-        start_date: assignment?.start_date ?? '',
-        end_date: assignment?.end_date ?? '',
+        start_date: assignment?.start_date?.slice(0, 10) ?? '',
+        end_date: assignment?.end_date?.slice(0, 10) ?? '',
         client_tariff: assignment?.client_tariff ?? 0,
         end_tariff: assignment?.end_tariff ?? '',
         tariff_type: assignment?.tariff_type ?? 'percentage',
@@ -346,9 +346,9 @@ function AssignmentFormModal({
             <Select
               label="Tariff Type"
               options={[
-                { value: 'percentage', label: 'Percentage split' },
-                { value: '50_50', label: '50/50 split' },
-                { value: 'end_tariff', label: 'End client tariff' },
+                { value: 'percentage', label: 'Percentage' },
+                { value: '50_50', label: '50/50' },
+                { value: 'end_tariff', label: 'End tariff' },
               ]}
               error={errors.tariff_type?.message}
               required
@@ -472,7 +472,7 @@ export default function AssignmentsPage() {
   const tariffTypeLabels: Record<string, string> = {
     percentage: 'Percentage',
     '50_50': '50/50',
-    end_tariff: 'End Tariff',
+    end_tariff: 'End tariff',
   };
 
   return (

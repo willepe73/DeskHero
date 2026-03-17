@@ -255,6 +255,35 @@ async def get_pdf_url(
     )
 
 
+@router.delete("/{contract_id}/pdf", response_model=ContractResponse)
+async def delete_pdf(
+    contract_id: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Prisma = Depends(get_db),
+) -> ContractResponse:
+    """Remove the PDF attachment from a contract and delete the file from disk."""
+    existing = await db.contract.find_unique(where={"id": contract_id})
+    if existing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contract not found")
+
+    if current_user.is_managing_partner and existing.consultancyCompanyId not in current_user.company_ids:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    if not existing.pdfBlobStorageId:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No PDF attached to this contract")
+
+    file_path = UPLOAD_DIR / existing.pdfBlobStorageId
+    if file_path.exists():
+        file_path.unlink()
+
+    record = await db.contract.update(
+        where={"id": contract_id},
+        data={"pdfBlobStorageId": None},
+        include={"assignments": True},
+    )
+    return ContractResponse.from_orm_map(record, include_assignments=True)
+
+
 @router.get("/{contract_id}/pdf/download")
 async def download_pdf(
     contract_id: str,

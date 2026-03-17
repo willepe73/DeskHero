@@ -374,6 +374,7 @@ function ContractWizardModal({
 
 const editContractSchema = z.object({
   name: z.string().min(1, 'Contract name is required'),
+  freelance_id: z.string().min(1, 'Freelancer is required'),
   purchase_rate: z.coerce.number({ invalid_type_error: 'Must be a number' }).min(0, 'Rate must be positive'),
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().min(1, 'End date is required'),
@@ -395,6 +396,16 @@ function EditContractModal({
   const qc = useQueryClient();
   const { success, error: toastError } = useToast();
 
+  const { data: freelancers } = useQuery({
+    queryKey: ['freelancers-select'],
+    queryFn: () => freelancersApi.list({ size: 100 }),
+  });
+
+  const freelancerOptions = freelancers?.items.map((f) => ({
+    value: f.id,
+    label: getFullName(f),
+  })) ?? [];
+
   const {
     register,
     handleSubmit,
@@ -404,6 +415,7 @@ function EditContractModal({
     resolver: zodResolver(editContractSchema),
     defaultValues: {
       name: contract.name,
+      freelance_id: contract.freelance_id,
       purchase_rate: contract.purchase_rate,
       start_date: contract.start_date?.slice(0, 10) ?? '',
       end_date: contract.end_date?.slice(0, 10) ?? '',
@@ -416,6 +428,7 @@ function EditContractModal({
     if (isOpen) {
       reset({
         name: contract.name,
+        freelance_id: contract.freelance_id,
         purchase_rate: contract.purchase_rate,
         start_date: contract.start_date?.slice(0, 10) ?? '',
         end_date: contract.end_date?.slice(0, 10) ?? '',
@@ -466,6 +479,14 @@ function EditContractModal({
           error={errors.name?.message}
           required
           {...register('name')}
+        />
+        <Select
+          label="Freelancer"
+          placeholder="Select a freelancer…"
+          options={freelancerOptions}
+          error={errors.freelance_id?.message}
+          required
+          {...register('freelance_id')}
         />
         <div className="grid grid-cols-2 gap-4">
           <Input
@@ -521,14 +542,26 @@ function PdfDropZone({ contract }: { contract: Contract }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [pdfId, setPdfId] = useState<string | null | undefined>(contract.pdf_blob_storage_id);
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => contractsApi.uploadPdf(contract.id, file),
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      setPdfId(updated.pdf_blob_storage_id);
       qc.invalidateQueries({ queryKey: ['contracts'] });
       success('PDF uploaded', 'Contract document has been attached.');
     },
     onError: (err) => toastError('Upload failed', getApiErrorMessage(err)),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => contractsApi.deletePdf(contract.id),
+    onSuccess: () => {
+      setPdfId(null);
+      qc.invalidateQueries({ queryKey: ['contracts'] });
+      success('PDF removed', 'Contract document has been detached.');
+    },
+    onError: (err) => toastError('Remove failed', getApiErrorMessage(err)),
   });
 
   const validateAndUpload = (file: File) => {
@@ -578,9 +611,11 @@ function PdfDropZone({ contract }: { contract: Contract }) {
     }
   };
 
+  const isBusy = uploadMutation.isPending || deleteMutation.isPending;
+
   return (
     <div className="space-y-2">
-      {contract.pdf_blob_storage_id && (
+      {pdfId && (
         <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
           <FileText size={14} className="text-green-600 shrink-0" />
           <span className="text-sm text-gray-700 font-medium flex-1 truncate">
@@ -593,19 +628,31 @@ function PdfDropZone({ contract }: { contract: Contract }) {
           >
             <Download size={12} /> Download
           </button>
+          <button
+            type="button"
+            onClick={() => deleteMutation.mutate()}
+            disabled={isBusy}
+            className="text-red-500 hover:text-red-700 text-xs flex items-center gap-1 shrink-0 disabled:opacity-50"
+          >
+            {deleteMutation.isPending ? (
+              <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <X size={12} />
+            )} Remove
+          </button>
         </div>
       )}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => !uploadMutation.isPending && fileRef.current?.click()}
+        onClick={() => !isBusy && fileRef.current?.click()}
         className={cn(
           'border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all',
           isDragOver
             ? 'border-brand-400 bg-brand-50'
             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50',
-          uploadMutation.isPending && 'pointer-events-none opacity-60'
+          isBusy && 'pointer-events-none opacity-60'
         )}
       >
         <input
@@ -623,7 +670,7 @@ function PdfDropZone({ contract }: { contract: Contract }) {
         ) : (
           <div className="flex flex-col items-center gap-2">
             <Upload size={20} className="text-gray-400" />
-            {contract.pdf_blob_storage_id ? (
+            {pdfId ? (
               <>
                 <p className="text-sm text-gray-600 font-medium">Drag & drop or click to replace</p>
                 <p className="text-xs text-amber-600">Uploading a new file will replace the existing PDF</p>
@@ -643,6 +690,162 @@ function PdfDropZone({ contract }: { contract: Contract }) {
         </p>
       )}
     </div>
+  );
+}
+
+// ─── Contract Detail Modal ────────────────────────────────────────────────────
+
+function ContractDetailModal({
+  contract,
+  onClose,
+  onEdit,
+}: {
+  contract: Contract | null;
+  onClose: () => void;
+  onEdit: (c: Contract) => void;
+}) {
+  const { data: freelancer } = useQuery({
+    queryKey: ['freelancer', contract?.freelance_id],
+    queryFn: () => freelancersApi.get(contract!.freelance_id),
+    enabled: Boolean(contract?.freelance_id),
+  });
+
+  const { data: company } = useQuery({
+    queryKey: ['company', contract?.consultancy_company_id],
+    queryFn: () => companiesApi.get(contract!.consultancy_company_id),
+    enabled: Boolean(contract?.consultancy_company_id),
+  });
+
+  const { error: toastError } = useToast();
+
+  const handleDownload = async () => {
+    if (!contract) return;
+    try {
+      const blob = await contractsApi.downloadPdf(contract.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contract-${contract.id}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toastError('Download failed', getApiErrorMessage(err));
+    }
+  };
+
+  if (!contract) return null;
+
+  return (
+    <Modal
+      isOpen={Boolean(contract)}
+      onClose={onClose}
+      title={contract.name}
+      size="lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Close</Button>
+          <Button variant="primary" leftIcon={<Edit2 size={14} />} onClick={() => { onClose(); onEdit(contract); }}>
+            Edit Contract
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-5">
+        {/* Key info */}
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-gray-500">Consulting Company</p>
+            <p className="font-medium text-gray-900 mt-0.5">{company?.name ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">Freelancer</p>
+            <p className="font-medium text-gray-900 mt-0.5">{freelancer ? getFullName(freelancer) : '—'}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">Purchase Rate</p>
+            <p className="font-medium text-gray-900 mt-0.5">{formatCurrency(contract.purchase_rate)}/day</p>
+          </div>
+          <div>
+            <p className="text-gray-500">Status</p>
+            <div className="mt-0.5 flex items-center gap-2">
+              <ContractStatusBadge status={contract.status} />
+              <ExpiryBadge endDate={contract.end_date} />
+            </div>
+          </div>
+          <div>
+            <p className="text-gray-500">Start Date</p>
+            <p className="font-medium text-gray-900 mt-0.5">{formatDate(contract.start_date)}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">End Date</p>
+            <p className="font-medium text-gray-900 mt-0.5">{formatDate(contract.end_date)}</p>
+          </div>
+        </div>
+
+        {/* Remarks */}
+        {contract.remarks && (
+          <div className="text-sm">
+            <p className="text-gray-500">Remarks</p>
+            <p className="text-gray-700 mt-0.5 whitespace-pre-wrap">{contract.remarks}</p>
+          </div>
+        )}
+
+        {/* PDF */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Document</p>
+          {contract.pdf_blob_storage_id ? (
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+              <FileText size={14} className="text-green-600 shrink-0" />
+              <span className="text-sm text-gray-700 font-medium flex-1 truncate">
+                contract-{contract.id}.pdf
+              </span>
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="text-brand-600 hover:underline text-xs flex items-center gap-1 shrink-0"
+              >
+                <Download size={12} /> Download
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">No PDF attached</p>
+          )}
+        </div>
+
+        {/* Assignments */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Assignments</p>
+          {!contract.assignments?.length ? (
+            <p className="text-sm text-gray-400 py-3 text-center">No assignments linked to this contract</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="table-header">Timesheet Code</th>
+                  <th className="table-header">Tariff</th>
+                  <th className="table-header">Type</th>
+                  <th className="table-header">Status</th>
+                  <th className="table-header">Start</th>
+                  <th className="table-header">End</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {contract.assignments.map((a) => (
+                  <tr key={a.id}>
+                    <td className="table-cell font-mono text-xs">{a.timesheet_code}</td>
+                    <td className="table-cell">{formatCurrency(Number(a.client_tariff))}/day</td>
+                    <td className="table-cell">{{ percentage: 'Percentage', '50_50': '50/50', end_tariff: 'End tariff' }[a.tariff_type] ?? a.tariff_type}</td>
+                    <td className="table-cell capitalize">{a.status}</td>
+                    <td className="table-cell">{formatDate(a.start_date)}</td>
+                    <td className="table-cell">{a.end_date ? formatDate(a.end_date) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -692,6 +895,7 @@ export default function ContractsPage() {
   const PAGE_SIZE = 10;
 
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [viewContract, setViewContract] = useState<Contract | null>(null);
   const [editContract, setEditContract] = useState<Contract | null>(null);
   const [deleteContract, setDeleteContract] = useState<Contract | null>(null);
 
@@ -751,19 +955,17 @@ export default function ContractsPage() {
       </div>
 
       {/* Filters */}
-      <div className="card p-4 flex gap-3 flex-wrap">
+      <div className="card p-4 grid grid-cols-3 gap-3">
         <Input
           placeholder="Search contracts…"
           leftAddon={<Search size={15} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-52"
         />
         <Select
           options={companyOptions}
           value={companyFilter}
           onChange={(e) => { setCompanyFilter(e.target.value); setPage(1); }}
-          className="w-44"
         />
         <Select
           options={[
@@ -773,7 +975,6 @@ export default function ContractsPage() {
           ]}
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="w-36"
         />
       </div>
 
@@ -811,7 +1012,11 @@ export default function ContractsPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {data.items.map((contract) => (
-                  <tr key={contract.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={contract.id}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => setViewContract(contract)}
+                  >
                     <td className="table-cell">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
@@ -838,7 +1043,7 @@ export default function ContractsPage() {
                     </td>
                     <td className="table-cell text-gray-500">{formatDate(contract.start_date)}</td>
                     <td className="table-cell text-gray-500">{formatDate(contract.end_date)}</td>
-                    <td className="table-cell">
+                    <td className="table-cell" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <PdfActions contract={contract} />
                         <button
@@ -869,6 +1074,12 @@ export default function ContractsPage() {
       </div>
 
       {/* Modals */}
+      <ContractDetailModal
+        contract={viewContract}
+        onClose={() => setViewContract(null)}
+        onEdit={(c) => { setViewContract(null); setEditContract(c); }}
+      />
+
       <ContractWizardModal isOpen={wizardOpen} onClose={() => setWizardOpen(false)} />
 
       {editContract && (

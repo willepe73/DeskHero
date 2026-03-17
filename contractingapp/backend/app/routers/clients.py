@@ -13,6 +13,7 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 async def list_clients(
     search: str | None = None,
     type: str | None = None,
+    company_id: str | None = None,
     page: int = 1,
     size: int = 20,
     current_user: CurrentUser = Depends(get_current_user),
@@ -24,6 +25,10 @@ async def list_clients(
         where["type"] = type
     if search:
         where["name"] = {"contains": search}
+    if company_id:
+        where["assignments"] = {
+            "some": {"contract": {"is": {"consultancyCompanyId": company_id}}}
+        }
 
     skip = (page - 1) * size
     total = await db.client.count(where=where)
