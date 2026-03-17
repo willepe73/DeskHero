@@ -1,19 +1,20 @@
 import speech_recognition as sr
+import re
+from datetime import date as dt_date
 
-def get_spoken_input(prompt: str = "Say something: ") -> str:
+def get_spoken_input(prompt: str = "Say something: ", language: str = "en-US") -> str:
     recognizer = sr.Recognizer()
-    recognizer.pause_threshold = 1 #minimum sec silence to end phrase
-    recognizer.energy_threshold = 300 #to deal with noise level of your microphone, 300 is default. 
-    #a higher enery threshold makes the recognized less sensitive to noise, so good in loud environments
-    recognizer.dynamic_energy_threshold=True #automatically adjust to ambient noise
+    recognizer.pause_threshold = 1
+    recognizer.energy_threshold = 300
+    recognizer.dynamic_energy_threshold = True
     with sr.Microphone() as source:
         print(prompt)
         recognizer.adjust_for_ambient_noise(source, duration=0.5)
         audio = recognizer.listen(source)
 
     try:
-        text = recognizer.recognize_google(audio, language="en-US")
-        print(f"You said: {text}")
+        text = recognizer.recognize_google(audio, language=language)
+        print(f"You said ({language}): {text}")
         return text
     except sr.UnknownValueError:
         print("Sorry, I could not understand you.")
@@ -21,81 +22,94 @@ def get_spoken_input(prompt: str = "Say something: ") -> str:
         print(f"API error: {e}")
     return ""
 
-import re
-import requests
-from datetime import date as dt_date
-
-# This will only run when this voice_agent.py is run individually as main program.
-if __name__ == "__main__":
-    print("DeskHero Voice Agent Started! Say 'exit' to quit.")
-    print("Example: 'Book seat 401 on floor 1 in building Agora for 2026-03-14'")
+def process_voice_reservation(language: str = "en-US") -> dict:
+    """
+    Triggers the microphone, listens for a command in the specified language,
+    parses it, and returns the reservation details or an error message.
+    """
+    prompts = {
+        "en-US": "\nPlease speak your reservation (e.g., 'Book seat 401 on floor 1 in building Agora'): ",
+        "nl-NL": "\nSpreek uw reservering uit (bijv., 'Reserveer plek 401 op verdieping 1 in gebouw Agora'): "
+    }
     
-    while True:
-        user_text = get_spoken_input("\nPlease speak now: ")
+    prompt = prompts.get(language, prompts["en-US"])
+    user_text = get_spoken_input(prompt, language=language)
+    
+    if not user_text:
+        return {"status": "error", "message": "No voice input detected."}
         
-        if not user_text:
-            continue
-            
-        text_lower = user_text.lower()
-        if "exit" in text_lower or "quit" in text_lower:
-            print("Goodbye!")
-            break
-            
-        # Convert common written numbers to digits
+    text_lower = user_text.lower()
+    
+    # Language-specific number and keyword mapping
+    if language == "nl-NL":
+        num_map = {
+            "één": "1", "twee": "2", "drie": "3", "vier": "4", "vijf": "5",
+            "zes": "6", "zeven": "7", "acht": "8", "negen": "9", "tien": "10",
+            "elf": "11", "twaalf": "12"
+        }
+        # Keywords
+        seat_keywords = r'(?:plek|stoel|zetel|seat)'
+        floor_keywords = r'(?:verdieping|etage|floor|op)'
+        building_keywords = r'(?:gebouw|building)'
+        
+        # Dutch specific corrections
+        text_lower = text_lower.replace("gebouw aura", "gebouw agora")
+        text_lower = text_lower.replace("gebouw a quarter", "gebouw agora")
+    else:
+        # English defaults
         num_map = {
             "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
             "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10",
             "eleven": "11", "twelve": "12"
         }
+        seat_keywords = r'seat'
+        floor_keywords = r'(?:floor|on)'
+        building_keywords = r'building'
         
-        # Replace spoken words with digits to help regex
-        for word, digit in num_map.items():
-            text_lower = text_lower.replace(f" {word} ", f" {digit} ")
-            if text_lower.endswith(f" {word}"):
-                text_lower = text_lower[:-len(word)] + digit
-
-        # Correct common speech-to-text mistakes for building names
+        # English corrections
         text_lower = text_lower.replace("building aura", "building agora")
         text_lower = text_lower.replace("building aggra", "building agora")
         text_lower = text_lower.replace("building a quarter", "building agora")
+
+    # Replace spoken words with digits
+    for word, digit in num_map.items():
+        text_lower = text_lower.replace(f" {word} ", f" {digit} ")
+        if text_lower.endswith(f" {word}"):
+            text_lower = text_lower[:-len(word)] + digit
+
+    # Very basic regex parser to extract reservation info
+    seat_match = re.search(seat_keywords + r'\s+(\d+)', text_lower)
+    floor_match = re.search(floor_keywords + r'\s+(\d+)', text_lower)
+    building_match = re.search(building_keywords + r'\s+([a-zA-Z]+)', text_lower)
+    # Handle dates (stays similar as numbers usually are recognized as digits in both languages)
+    date_match = re.search(r'(\d{4})[-\s/]?(\d{2})[-\s/:]?(\d{2})', text_lower)
+    
+    if seat_match and floor_match and building_match:
+        seat = int(seat_match.group(1))
+        floor = int(floor_match.group(1))
+        building = building_match.group(1).title()
         
-        # Very basic regex parser to extract reservation info
-        seat_match = re.search(r'seat\s+(\d+)', text_lower)
-        # Look for "floor X" or just "on X"
-        floor_match = re.search(r'(?:floor|on)\s+(\d+)', text_lower)
-        building_match = re.search(r'building\s+([a-zA-Z]+)', text_lower)
-        # Handle dates like '2026-03-16' or '2026 03 16' or '2026 03:16'
-        date_match = re.search(r'(\d{4})[-\s/]?(\d{2})[-\s/:]?(\d{2})', text_lower)
+        res_date = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}" if date_match else dt_date.today().isoformat()
         
-        if seat_match and floor_match and building_match:
-            seat = int(seat_match.group(1))
-            floor = int(floor_match.group(1))
-            building = building_match.group(1).title() # Capitalize building name
-            
-            # Default to today if no date spoken
-            res_date = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}" if date_match else dt_date.today().isoformat()
-            
-            print(f"\nUnderstood: Booking Seat {seat} on Floor {floor} at {building} for {res_date}...")
-            
-            # Send the request to the local FastAPI server
-            payload = {
+        return {
+            "status": "success",
+            "data": {
                 "building": building,
                 "floor": floor,
                 "seat_number": seat,
                 "date": res_date,
                 "reserved_by": "Voice Agent"
-            }
-            
-            try:
-                response = requests.post("http://127.0.0.1:8000/api/v1/reservations", json=payload)
-                if response.status_code == 201:
-                    print("✅ Success! Your desk has been reserved.")
-                    break  # Exit the script after a successful reservation
-                else:
-                    print(f"❌ Failed to reserve: {response.json().get('detail', 'Unknown error')}")
-            except requests.exceptions.ConnectionError:
-                print("❌ Cannot connect to the API. Is the Uvicorn server running?")
-                
-        else:
-            print("I heard you, but I couldn't understand the reservation details.")
-            print("Please make sure to say 'seat [number]', 'floor [number]', and 'building [name]'.")
+            },
+            "transcript": user_text
+        }
+    else:
+        return {
+            "status": "error", 
+            "message": "Could not understand reservation details." if language == "en-US" else "Kon de reserveringsgegevens niet begrijpen.",
+            "transcript": user_text
+        }
+
+if __name__ == "__main__":
+    print("DeskHero Voice Agent Service Mode. Testing Dutch...")
+    result = process_voice_reservation(language="nl-NL")
+    print(f"Result: {result}")

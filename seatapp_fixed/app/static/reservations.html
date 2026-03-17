@@ -75,6 +75,25 @@
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%;">Create Reservation</button>
                 </form>
+                
+                <div class="mic-container">
+                    <p class="mic-label">Or use your voice to book</p>
+                    <button id="voiceBtn" class="btn btn-mic" title="Start Voice Reservation">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                        </svg>
+                    </button>
+                    <p id="micStatus" class="mic-label" style="display: none;">Listening...</p>
+                    
+                    <div class="lang-container">
+                        <label class="lang-label" for="voiceLang">Voice Language</label>
+                        <select id="voiceLang" class="lang-select">
+                            <option value="en-US">English (US)</option>
+                            <option value="nl-NL">Nederlands (NL)</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <div>
@@ -140,19 +159,9 @@
             fetchReservations(e.target.value);
         });
 
-        // Submit new reservation form
-        document.getElementById('reservationForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Create reservation handler (extracted for reuse)
+        async function createReservation(payload) {
             const alertMsg = document.getElementById('alertMsg');
-            
-            const payload = {
-                building: document.getElementById('resBuilding').value,
-                floor: parseInt(document.getElementById('resFloor').value),
-                seat_number: parseInt(document.getElementById('resSeat').value),
-                date: document.getElementById('resDate').value,
-                reserved_by: document.getElementById('resName').value
-            };
-
             try {
                 const response = await fetch('/api/v1/reservations', {
                     method: 'POST',
@@ -170,14 +179,81 @@
                     if (payload.date === document.getElementById('lookupDate').value) {
                         fetchReservations(payload.date);
                     }
+                    return true;
                 } else {
                     alertMsg.className = 'alert error';
                     alertMsg.innerText = result.detail || 'Error creating reservation. Check building/seat exists.';
+                    return false;
                 }
             } catch (err) {
                 alertMsg.className = 'alert error';
                 alertMsg.innerText = 'Server connection error.';
+                return false;
             }
+        }
+
+        // Voice Reservation Logic
+        const voiceBtn = document.getElementById('voiceBtn');
+        const micStatus = document.getElementById('micStatus');
+
+        voiceBtn.addEventListener('click', async () => {
+            // UI Feedback
+            voiceBtn.classList.add('listening');
+            micStatus.style.display = 'block';
+            document.getElementById('alertMsg').style.display = 'none';
+
+            const language = document.getElementById('voiceLang').value;
+
+            try {
+                // Call our new backend endpoint that triggers the voice agent
+                const response = await fetch(`/api/v1/voice-reservation?language=${language}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // Success! Fill the form for visual feedback
+                    document.getElementById('resBuilding').value = result.data.building;
+                    document.getElementById('resFloor').value = result.data.floor;
+                    document.getElementById('resSeat').value = result.data.seat_number;
+                    document.getElementById('resDate').value = result.data.date;
+                    document.getElementById('resName').value = result.data.reserved_by;
+
+                    // Automatically submit the reservation
+                    await createReservation(result.data);
+                } else {
+                    const alertMsg = document.getElementById('alertMsg');
+                    alertMsg.className = 'alert error';
+                    alertMsg.innerText = result.message || 'Speech not understood.';
+                    if (result.transcript) {
+                        alertMsg.innerText += ` Heard: "${result.transcript}"`;
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                const alertMsg = document.getElementById('alertMsg');
+                alertMsg.className = 'alert error';
+                alertMsg.innerText = 'Voice Agent error. Make sure server is running locally.';
+            } finally {
+                voiceBtn.classList.remove('listening');
+                micStatus.style.display = 'none';
+            }
+        });
+
+        // Submit new reservation form
+        document.getElementById('reservationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                building: document.getElementById('resBuilding').value,
+                floor: parseInt(document.getElementById('resFloor').value),
+                seat_number: parseInt(document.getElementById('resSeat').value),
+                date: document.getElementById('resDate').value,
+                reserved_by: document.getElementById('resName').value
+            };
+
+            await createReservation(payload);
         });
     </script>
 </body>

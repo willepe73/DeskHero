@@ -13,6 +13,7 @@ from .seat_registry import load_floorplan_seats
 from .settings import settings
 from .api.reservations import router as reservations_router
 from .api.locations import router as locations_router
+from .voice_agent import process_voice_reservation
 
 import uvicorn #to run this backend api on a local port
 
@@ -91,6 +92,15 @@ def health() -> dict:
 
 app.include_router(reservations_router, prefix=settings.api_prefix)
 app.include_router(locations_router, prefix=settings.api_prefix)
+
+@app.post(f"{settings.api_prefix}/voice-reservation")
+async def voice_reservation(language: str = "en-US"):
+    """
+    Triggers the voice recognition agent on the server machine.
+    Note: This works because the server is running locally on the user's machine.
+    """
+    result = process_voice_reservation(language=language)
+    return result
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
