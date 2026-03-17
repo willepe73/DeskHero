@@ -1,83 +1,87 @@
-# Database Data Models
+# Data Models
 
-## User Roles
-* `admin` - Global administrator with access to view and manage all data across all companies.
-* `managing_partner` - Operations personnel managing freelancers and employees for their specific consultancy company. Can only see and maintain data for their assigned company.
+The following data models describe the core entities and their relationships within the ContractingApp system. The database is managed via Prisma ORM.
 
-## Entities
+---
 
-### `ConsultancyCompany`
-A business unit employing employees or contracting freelancers.
-* `id` (UUID, Primary Key)
-* `name` (String, Required)
-* `created_at` (Timestamp)
-* `updated_at` (Timestamp)
+## ConsultancyCompany
+Represents a consultancy company that employs or contracts workers.
+*   `id` (String, KSUID/CUID) - Primary Key
+*   `name` (String) - Name of the company
+*   `createdAt` (DateTime) - Auto-generated creation timestamp
+*   `updatedAt` (DateTime) - Auto-generated update timestamp
 
-### `Client`
-An intercompany company or an end client that hires freelancers/employees through a consultancy company.
-* `id` (UUID, Primary Key)
-* `name` (String, Required)
-* `type` (Enum: `intercompany`, `end_client`, Required)
-* `billing_email` (String, Required)
-* `billing_address` (Text, Optional)
-* `created_at` (Timestamp)
-* `updated_at` (Timestamp)
+## Client
+Represents a client who assigns work.
+*   `id` (String, KSUID/CUID) - Primary Key
+*   `name` (String) - Name of the client
+*   `type` (String) - Enum values: `intercompany` or `end_client`
+*   `billingAddress` (String, Optional) - Address for billing
+*   `createdAt` (DateTime) - Auto-generated creation timestamp
+*   `updatedAt` (DateTime) - Auto-generated update timestamp
 
-### `FreelanceProfile`
-Represents an independent contractor.
-* `id` (UUID, Primary Key)
-* `first_name` (String, Required)
-* `last_name` (String, Required)
-* `purchase_rate` (Decimal, Required)
-* `fixed` (Boolean, Default: false) - Indicates if the freelance consultant has a fixed engagement or rate
-* `contracts` (Array of `Contract` objects, Optional)
-* `status` (Enum: `active`, `inactive`, Default: `active`)
-* `created_at` (Timestamp)
-* `updated_at` (Timestamp)
+## FreelanceProfile
+Profiles of freelance workers associated with a consultancy company.
+*   `id` (String, KSUID/CUID) - Primary Key
+*   `companyId` (String) - Foreign Key to `ConsultancyCompany`
+*   `firstName` (String) - First name
+*   `lastName` (String) - Last name
+*   `fixed` (Boolean) - Default `false`
+*   `status` (String) - Enum values: `active` or `inactive` (Default: `active`)
+*   `createdAt` (DateTime) - Auto-generated creation timestamp
+*   `updatedAt` (DateTime) - Auto-generated update timestamp
 
-### `EmployeeProfile`
-Represents an internal employee.
-* `id` (UUID, Primary Key)
-* `first_name` (String, Required)
-* `last_name` (String, Required)
-* `cronos_cost_price_220d` (Decimal, Required)
-* `cronos_cost_price_180d` (Decimal, Required)
-* `contracts` (Array of `Contract` objects, Optional)
-* `status` (Enum: `active`, `inactive`, Default: `active`)
-* `created_at` (Timestamp)
-* `updated_at` (Timestamp)
+## EmployeeProfile
+Profiles of internal employees associated with a consultancy company.
+*   `id` (String, KSUID/CUID) - Primary Key
+*   `companyId` (String) - Foreign Key to `ConsultancyCompany`
+*   `firstName` (String) - First name
+*   `lastName` (String) - Last name
+*   `cronosCostPrice220d` (Float) - Cost price metric
+*   `cronosCostPrice180d` (Float) - Cost price metric
+*   `status` (String) - Enum values: `active` or `inactive` (Default: `active`)
+*   `createdAt` (DateTime) - Auto-generated creation timestamp
+*   `updatedAt` (DateTime) - Auto-generated update timestamp
 
-### `Contract`
-Binding agreement between a freelance profile or employee profile and their Consultancy Company.
-* `id` (UUID, Primary Key)
-* `name` (String, Required) - A descriptive title for the contract (e.g., "Senior React Developer - Q3")
-* `consultancy_company_id` (FK to `ConsultancyCompany`, Required)
-* `profile_type` (Enum: `freelance`, `employee`, Required)
-* `freelance_id` (FK to `FreelanceProfile`, Optional - required if profile_type is freelance)
-* `employee_id` (FK to `EmployeeProfile`, Optional - required if profile_type is employee)
-* `start_date` (Date, Required)
-* `end_date` (Date, Optional)
-* `pdf_blob_storage_id` (String, Optional) - Reference to document in blob storage (primarily for freelancers)
-* `max_budget` (Decimal, Optional)
-* `assignments` (Array of `Assignment` objects, Optional)
-* `remarks` (Text, Optional)
-* `status` (Enum: `active`, `terminated`, Default: `active`)
-* `created_at` (Timestamp)
-* `updated_at` (Timestamp)
+## Contract
+Agreements covering freelance workers.
+*   `id` (String, KSUID/CUID) - Primary Key
+*   `name` (String) - Name of the agreement
+*   `consultancyCompanyId` (String) - Foreign Key to `ConsultancyCompany`
+*   `freelanceId` (String) - Foreign Key to `FreelanceProfile`
+*   `purchaseRate` (Float) - Agreed purchase rate
+*   `startDate` (DateTime) - Contracting start date
+*   `endDate` (DateTime) - Contracting end date
+*   `pdfBlobStorageId` (String, Optional) - Reference ID for stored PDF contract
+*   `remarks` (String, Optional) - Additional observations
+*   `status` (String) - Enum values: `active` or `terminated` (Default: `active`)
+*   `createdAt` (DateTime) - Auto-generated creation timestamp
+*   `updatedAt` (DateTime) - Auto-generated update timestamp
 
-### `Assignment`
-A specific placement of a freelancer or employee at a client.
-* `id` (UUID, Primary Key)
-* `contract_id` (FK to `Contract`, Required)
-* `client_id` (FK to `Client`, Required) - The primary intercompany or direct client
-* `end_client_id` (FK to `Client`, Required) - The ultimate end client if the assignment is through an intermediary
-* `timesheet_code` (String, Required)
-* `start_date` (Date, Required)
-* `end_date` (Date, Optional)
-* `client_tariff` (Decimal, Required)
-* `end_tariff` (Decimal, Optional)
-* `tariff_type` (Enum: `percentage`, `50_50`, `end_tariff`, Required)
-* `remarks` (Text, Optional)
-* `status` (Enum: `active`, `completed`, `cancelled`, Default: `active`)
-* `created_at` (Timestamp)
-* `updated_at` (Timestamp)
+## Assignment
+Specific project or task assignments mapped to workers and clients.
+*   `id` (String, KSUID/CUID) - Primary Key
+*   `contractId` (String, Optional) - Foreign Key to `Contract`
+*   `employeeId` (String, Optional) - Foreign Key to `EmployeeProfile`
+*   `clientId` (String) - Foreign Key to `Client` (Intermediary/Direct)
+*   `endClientId` (String) - Foreign Key to `Client` (Ultimate end client)
+*   `timesheetCode` (String) - Code for timesheet tracking
+*   `startDate` (DateTime) - Assignment start date
+*   `endDate` (DateTime) - Assignment end date
+*   `clientTariff` (Float) - Tariff applied to client
+*   `endTariff` (Float, Optional) - Tariff applied to end client
+*   `tariffType` (String) - Enum values: `percentage`, `50_50`, or `end_tariff`
+*   `remarks` (String, Optional) - Additional observations
+*   `status` (String) - Enum values: `active`, `completed`, or `cancelled` (Default: `active`)
+*   `createdAt` (DateTime) - Auto-generated creation timestamp
+*   `updatedAt` (DateTime) - Auto-generated update timestamp
+
+## User
+System users who authenticate and manage data.
+*   `id` (String, KSUID/CUID) - Primary Key
+*   `email` (String) - Unique email address
+*   `hashedPassword` (String) - Secure password hash
+*   `role` (String) - Enum values: `admin` or `managing_partner`
+*   `companyIds` (String) - JSON array of UUIDs limiting `managing_partner` access points
+*   `createdAt` (DateTime) - Auto-generated creation timestamp
+*   `updatedAt` (DateTime) - Auto-generated update timestamp

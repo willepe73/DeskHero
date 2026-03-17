@@ -1,75 +1,45 @@
-# API Specifications (API-First Design)
+# API Specifications
 
-All endpoints utilize RESTful conventions, returning JSON payloads. Assume standard JWT Bearer authentication headers are required for all endpoints under the `/api/v1` path, aside from public endpoints.
+The Backend API is built using Python FastAPI and uses standard RESTful architectures, returning JSON.
+All endpoints require a valid JWT token via the `Authorization: Bearer <token>` header, except for `/auth/login`.
 
-## Base URL
-`/api/v1`
+## Authentication
 
----
+### `POST /api/v1/auth/login`
+Validates user credentials and returns a JWT token.
+- **Request Body:** Email and password credentials.
+- **Response:** Bearer token with expiration.
 
-## 1. Profiles (`/profiles`)
-*Note: For `managing_partner` roles, all GET requests are implicitly filtered to only return profiles (and sub-resources) associated with `ConsultancyCompany` records they are authorized to access via the `company_ids` claims within their JWT. Global `admin` users can see all profiles.*
+## Entities APIs
 
-### `GET /profiles/freelance`
-List all freelance profiles along with their associated `contracts`.
+Common CRUD endpoints are provided for system entities. Typical patterns include:
+- `GET /api/v1/:resource` - List all entries (respects role limitations)
+- `POST /api/v1/:resource` - Create a new entry
+- `GET /api/v1/:resource/:id` - Retrieve specific entry details
+- `PUT /api/v1/:resource/:id` - Update specific entry details
+- `DELETE /api/v1/:resource/:id` - Remove specific entry
 
-### `POST /profiles/freelance`
-Create a new freelance profile.
-* **Payload:** `first_name`, `last_name`, `purchase_rate`, `fixed`
+### Companies
+Base Path: `/api/v1/companies`
 
-### `GET /profiles/employee`
-List all employee profiles along with their associated `contracts`.
+### Clients
+Base Path: `/api/v1/clients`
 
-### `POST /profiles/employee`
-Create a new employee profile.
+### Freelancers
+Base Path: `/api/v1/profiles/freelance`
 
----
+### Employees
+Base Path: `/api/v1/profiles/employee`
 
-## 2. Contracts (`/contracts`)
-*Note: `managing_partner` users will only see contracts belonging to a `consultancy_company_id` they manage, indicated by the claims within their JWT. Global `admin` users can see all contracts.*
+### Contracts
+Base Path: `/api/v1/contracts`
+Additionally includes specific sub-resources for managing PDF documents:
+- `POST /api/v1/contracts/:id/pdf` - Upload a PDF contract.
+- `GET /api/v1/contracts/:id/pdf` - Retrieve a previously uploaded PDF contract.
 
-### `GET /contracts`
-List contracts with filtering capabilities (by consultancy company, profile, or status), returned along with their associated `assignments`.
+### Assignments
+Base Path: `/api/v1/assignments`
 
-### `POST /contracts`
-Create a new contract binding a profile (freelance or employee) to a consultancy company.
-* **Payload Structure:**
-  ```json
-  {
-    "name": "Senior React Developer - Q3",
-    "consultancy_company_id": "uuid",
-    "profile_type": "freelance",
-    "freelance_id": "uuid",
-    "start_date": "2024-01-01",
-    "end_date": "2024-06-30"
-  }
-  ```
-
-### `POST /contracts/:id/pdf`
-Upload the signed PDF contract to blob storage and associate it with the contract record.
-* **Payload:** `multipart/form-data` with `file` field.
-* **Response:** Returns the updated contract containing the new `pdf_blob_storage_id`.
-
-### `GET /contracts/:id/pdf`
-Download or get a pre-signed GET URL for the contract PDF from blob storage.
-
----
-
-## 3. Assignments (`/assignments`)
-
-### `POST /assignments`
-Create an assignment placing a contracted profile at a client.
-* **Payload Structure:**
-  ```json
-  {
-    "contract_id": "uuid",
-    "client_id": "uuid",
-    "end_client_id": "uuid",
-    "timesheet_code": "DEV-101",
-    "start_date": "2024-02-01",
-    "client_tariff": 85.00,
-    "tariff_type": "percentage",
-    "end_tariff": 100.00,
-    "remarks": "Assigned to the Core Platform team"
-  }
-  ```
+## Roles & Access
+1.  **Admin:** Can access and mutate data globally across all entities.
+2.  **Managing Partner:** Restricted to accessing entities that are related to their assigned `companyIds`. All endpoints implicitly enforce filtering based on these IDs matching the target object's `companyId`.
