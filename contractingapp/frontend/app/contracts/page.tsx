@@ -405,8 +405,8 @@ function EditContractModal({
     defaultValues: {
       name: contract.name,
       purchase_rate: contract.purchase_rate,
-      start_date: contract.start_date,
-      end_date: contract.end_date ?? '',
+      start_date: contract.start_date?.slice(0, 10) ?? '',
+      end_date: contract.end_date?.slice(0, 10) ?? '',
       remarks: contract.remarks ?? '',
       status: contract.status,
     },
@@ -417,8 +417,8 @@ function EditContractModal({
       reset({
         name: contract.name,
         purchase_rate: contract.purchase_rate,
-        start_date: contract.start_date,
-        end_date: contract.end_date ?? '',
+        start_date: contract.start_date?.slice(0, 10) ?? '',
+        end_date: contract.end_date?.slice(0, 10) ?? '',
         remarks: contract.remarks ?? '',
         status: contract.status,
       });

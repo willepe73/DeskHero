@@ -10,6 +10,7 @@ from app.routers.assignments import router as assignments_router
 from app.routers.clients import router as clients_router
 from app.routers.companies import router as companies_router
 from app.routers.contracts import router as contracts_router
+from app.routers.dashboard import router as dashboard_router
 from app.routers.profiles import router as profiles_router
 
 
@@ -45,6 +46,7 @@ app.add_middleware(
 API_PREFIX = "/api/v1"
 
 app.include_router(auth_router, prefix=API_PREFIX)
+app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(companies_router, prefix=API_PREFIX)
 app.include_router(clients_router, prefix=API_PREFIX)
 app.include_router(profiles_router, prefix=API_PREFIX)

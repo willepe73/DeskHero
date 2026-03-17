@@ -11,12 +11,13 @@ import {
   TrendingUp,
   ArrowRight,
   Clock,
+  CalendarClock,
 } from 'lucide-react';
 import { dashboardApi } from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { CardSkeleton, TableSkeleton } from '@/components/ui/LoadingSpinner';
 import { ContractStatusBadge, ProfileTypeBadge, ExpiryBadge } from '@/components/ui/Badge';
-import type { Contract } from '@/lib/types';
+import type { Assignment, Contract } from '@/lib/types';
 
 interface MetricCardProps {
   title: string;
@@ -85,6 +86,35 @@ function ContractRow({ contract }: { contract: Contract }) {
   );
 }
 
+function daysUntil(dateStr: string): number {
+  const diff = new Date(dateStr).getTime() - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+function AssignmentExpiryRow({ assignment }: { assignment: Assignment }) {
+  const days = daysUntil(assignment.end_date);
+  return (
+    <tr className="hover:bg-gray-50 transition-colors">
+      <td className="table-cell font-medium text-gray-900">{assignment.timesheet_code}</td>
+      <td className="table-cell text-gray-500">{formatDate(assignment.end_date)}</td>
+      <td className="table-cell">
+        <span
+          className={
+            days <= 7
+              ? 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700'
+              : days <= 14
+              ? 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700'
+              : 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700'
+          }
+        >
+          {days <= 0 ? 'Today' : `${days}d left`}
+        </span>
+      </td>
+      <td className="table-cell text-gray-500">{formatCurrency(assignment.client_tariff)}/day</td>
+    </tr>
+  );
+}
+
 export default function DashboardPage() {
   const { data: metrics, isLoading, error } = useQuery({
     queryKey: ['dashboard-metrics'],
@@ -95,6 +125,7 @@ export default function DashboardPage() {
       active_employees: 0,
       upcoming_expirations: 0,
       recent_contracts: [],
+      expiring_assignments: [],
     },
   });
 
@@ -110,13 +141,13 @@ export default function DashboardPage() {
 
       {/* Metric cards */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
             <CardSkeleton key={i} />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
             title="Active Freelancers"
             value={metrics?.active_freelancers ?? 0}
@@ -136,13 +167,22 @@ export default function DashboardPage() {
             href="/consultants"
           />
           <MetricCard
-            title="Upcoming Expirations"
+            title="Expiring Contracts"
             value={metrics?.upcoming_expirations ?? 0}
             icon={AlertTriangle}
             color="text-yellow-600"
             bgColor="bg-yellow-100"
             description="Contracts expiring within 30 days"
             href="/contracts"
+          />
+          <MetricCard
+            title="Expiring Assignments"
+            value={metrics?.expiring_assignments?.length ?? 0}
+            icon={CalendarClock}
+            color="text-orange-600"
+            bgColor="bg-orange-100"
+            description="Assignments expiring within 30 days"
+            href="/assignments"
           />
         </div>
       )}
@@ -170,6 +210,50 @@ export default function DashboardPage() {
             />
           </Link>
         ))}
+      </div>
+
+      {/* Expiring assignments */}
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <CalendarClock size={17} className="text-orange-400" />
+            <h2 className="text-base font-semibold text-gray-900">Expiring Assignments</h2>
+            <span className="text-xs text-gray-400 font-normal">within 30 days</span>
+          </div>
+          <Link
+            href="/assignments"
+            className="flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 font-medium"
+          >
+            View all <ArrowRight size={14} />
+          </Link>
+        </div>
+
+        {isLoading ? (
+          <TableSkeleton rows={3} cols={4} />
+        ) : error ? null : metrics?.expiring_assignments && metrics.expiring_assignments.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="table-header">Timesheet Code</th>
+                  <th className="table-header">End Date</th>
+                  <th className="table-header">Time Left</th>
+                  <th className="table-header">Tariff</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {metrics.expiring_assignments.map((a) => (
+                  <AssignmentExpiryRow key={a.id} assignment={a} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <CalendarClock size={32} className="mb-2 text-gray-200" />
+            <p className="text-sm">No assignments expiring in the next 30 days</p>
+          </div>
+        )}
       </div>
 
       {/* Recent contracts */}

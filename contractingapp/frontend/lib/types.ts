@@ -103,6 +103,7 @@ export interface DashboardMetrics {
   active_employees: number;
   upcoming_expirations: number;
   recent_contracts: Contract[];
+  expiring_assignments: Assignment[];
 }
 
 export interface PaginatedResponse<T> {
