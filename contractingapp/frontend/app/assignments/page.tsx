@@ -52,6 +52,7 @@ const assignmentSchema = z
       .min(0, 'Tariff must be positive'),
     end_tariff: z.coerce.number().min(0).optional().or(z.literal('')),
     tariff_type: z.enum(['percentage', '50_50', 'end_tariff']),
+    percentage: z.coerce.number().min(0).max(100).optional().or(z.literal('')),
     remarks: z.string().optional(),
     status: z.enum(['active', 'completed', 'cancelled']),
   })
@@ -103,6 +104,7 @@ function AssignmentFormModal({
       client_tariff: assignment?.client_tariff ?? 0,
       end_tariff: assignment?.end_tariff ?? '',
       tariff_type: assignment?.tariff_type ?? 'percentage',
+      percentage: assignment?.percentage ?? '',
       remarks: assignment?.remarks ?? '',
       status: assignment?.status ?? 'active',
     },
@@ -125,6 +127,7 @@ function AssignmentFormModal({
         client_tariff: assignment?.client_tariff ?? 0,
         end_tariff: assignment?.end_tariff ?? '',
         tariff_type: assignment?.tariff_type ?? 'percentage',
+        percentage: assignment?.percentage ?? '',
         remarks: assignment?.remarks ?? '',
         status: assignment?.status ?? 'active',
       });
@@ -167,6 +170,7 @@ function AssignmentFormModal({
     contract_id: assignmentType === 'contract' ? data.contract_id : undefined,
     employee_id: assignmentType === 'employee' ? data.employee_id : undefined,
     end_tariff: data.end_tariff ? Number(data.end_tariff) : undefined,
+    percentage: data.tariff_type === 'percentage' && data.percentage !== '' ? Number(data.percentage) : undefined,
     end_date: data.end_date || undefined,
     remarks: data.remarks || undefined,
   });
@@ -355,6 +359,18 @@ function AssignmentFormModal({
               {...register('tariff_type')}
             />
           </div>
+          {tariffType === 'percentage' && (
+            <Input
+              label="Percentage (%)"
+              type="number"
+              step="0.01"
+              placeholder="e.g. 15"
+              hint="Percentage of the client tariff"
+              error={errors.percentage?.message}
+              required
+              {...register('percentage')}
+            />
+          )}
           {tariffType === 'end_tariff' && (
             <Input
               label="End Client Tariff (€/day)"
@@ -621,6 +637,11 @@ export default function AssignmentsPage() {
                       <p className="text-sm font-semibold text-gray-900">
                         {formatCurrency(assignment.client_tariff)}/day
                       </p>
+                      {assignment.tariff_type === 'percentage' && assignment.percentage != null && (
+                        <p className="text-xs text-gray-400">
+                          {assignment.percentage}%
+                        </p>
+                      )}
                       {assignment.end_tariff && (
                         <p className="text-xs text-gray-400">
                           End: {formatCurrency(assignment.end_tariff)}/day

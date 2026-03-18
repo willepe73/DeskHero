@@ -78,6 +78,7 @@ export interface Assignment {
   client_tariff: number;
   end_tariff?: number;
   tariff_type: 'percentage' | '50_50' | 'end_tariff';
+  percentage?: number;
   remarks?: string;
   status: 'active' | 'completed' | 'cancelled';
 }
