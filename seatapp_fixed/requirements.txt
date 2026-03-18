@@ -13,6 +13,3 @@ psycopg2-binary
 pytesseract
 Pillow
 SpeechRecognition
-
-
->>>>>>> b6504c51f0eb6a6970279395545f6ed6c6313f21
