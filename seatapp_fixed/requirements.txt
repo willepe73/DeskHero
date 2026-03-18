@@ -1,9 +1,18 @@
 fastapi
-uvicorn[standard]
-SQLAlchemy
+uvicorn
+sqlalchemy
 pydantic-settings
+<<<<<<< HEAD
+pydantic
+jinja2
+python-multipart
+requests
+gunicorn
+psycopg2-binary
+=======
 pytesseract
 Pillow
 SpeechRecognition
 
 
+>>>>>>> b6504c51f0eb6a6970279395545f6ed6c6313f21
