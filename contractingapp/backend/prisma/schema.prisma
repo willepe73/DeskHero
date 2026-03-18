@@ -98,6 +98,7 @@ model Assignment {
   clientTariff    Float            @map("client_tariff")
   endTariff       Float?           @map("end_tariff")
   tariffType      String           @map("tariff_type")  // percentage | 50_50 | end_tariff
+  percentage      Float?
   remarks         String?
   status          String           @default("active")   // active | completed | cancelled
   createdAt       DateTime         @default(now()) @map("created_at")

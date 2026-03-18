@@ -15,6 +15,7 @@ class AssignmentCreate(BaseModel):
     client_tariff: float
     end_tariff: float | None = None
     tariff_type: Literal["percentage", "50_50", "end_tariff"]
+    percentage: float | None = None
     remarks: str | None = None
     status: Literal["active", "completed", "cancelled"] = "active"
 
@@ -38,6 +39,7 @@ class AssignmentUpdate(BaseModel):
     client_tariff: float | None = None
     end_tariff: float | None = None
     tariff_type: Literal["percentage", "50_50", "end_tariff"] | None = None
+    percentage: float | None = None
     remarks: str | None = None
     status: Literal["active", "completed", "cancelled"] | None = None
 
@@ -56,6 +58,7 @@ class AssignmentResponse(BaseModel):
     client_tariff: float
     end_tariff: float | None = None
     tariff_type: str
+    percentage: float | None = None
     remarks: str | None = None
     status: str
     created_at: datetime
@@ -64,6 +67,7 @@ class AssignmentResponse(BaseModel):
     @classmethod
     def from_orm_map(cls, obj: object) -> "AssignmentResponse":
         end_tariff_raw = getattr(obj, "endTariff", None)
+        percentage_raw = getattr(obj, "percentage", None)
         return cls(
             id=getattr(obj, "id"),
             contract_id=getattr(obj, "contractId", None),
@@ -76,6 +80,7 @@ class AssignmentResponse(BaseModel):
             client_tariff=float(getattr(obj, "clientTariff")),
             end_tariff=float(end_tariff_raw) if end_tariff_raw is not None else None,
             tariff_type=getattr(obj, "tariffType"),
+            percentage=float(percentage_raw) if percentage_raw is not None else None,
             remarks=getattr(obj, "remarks"),
             status=getattr(obj, "status"),
             created_at=getattr(obj, "createdAt"),

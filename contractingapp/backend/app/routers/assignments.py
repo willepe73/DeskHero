@@ -123,6 +123,8 @@ async def create_assignment(
         create_data["endDate"] = payload.end_date
     if payload.end_tariff is not None:
         create_data["endTariff"] = payload.end_tariff
+    if payload.percentage is not None:
+        create_data["percentage"] = payload.percentage
     if payload.remarks:
         create_data["remarks"] = payload.remarks
 
@@ -179,6 +181,11 @@ async def update_assignment(
         update_data["endTariff"] = payload.end_tariff
     if payload.tariff_type is not None:
         update_data["tariffType"] = payload.tariff_type
+    if payload.percentage is not None:
+        update_data["percentage"] = payload.percentage
+    elif payload.tariff_type is not None and payload.tariff_type != "percentage":
+        # Clear percentage when switching away from percentage tariff type
+        update_data["percentage"] = None
     if payload.remarks is not None:
         update_data["remarks"] = payload.remarks
     if payload.status is not None:

@@ -2,9 +2,14 @@ fastapi
 uvicorn
 sqlalchemy
 pydantic-settings
+<<<<<<< HEAD
 pydantic
 jinja2
 python-multipart
 requests
 gunicorn
 psycopg2-binary
+=======
+pytesseract
+Pillow
+SpeechRecognition
