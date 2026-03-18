@@ -1,8 +1,10 @@
 fastapi
-uvicorn[standard]
-SQLAlchemy
+uvicorn
+sqlalchemy
 pydantic-settings
-pytesseract
-Pillow
-
-
+pydantic
+jinja2
+python-multipart
+requests
+gunicorn
+psycopg2-binary
