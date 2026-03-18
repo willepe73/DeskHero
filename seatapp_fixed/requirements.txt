@@ -4,5 +4,6 @@ SQLAlchemy
 pydantic-settings
 pytesseract
 Pillow
+SpeechRecognition
 
 
