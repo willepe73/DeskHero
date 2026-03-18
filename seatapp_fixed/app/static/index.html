@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeskHero - Welcome</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .hero-image {
+            max-height: 500px;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/">
+            <img src="/static/images/DeskHero2.png" alt="DeskHero Logo" class="logo" onerror="this.src='https://via.placeholder.com/200x50?text=DeskHero+Logo'">
+        </a>
+        <nav class="nav-links">
+            <a href="/locations" class="nav-link">Locations</a>
+            <a href="/reservations" class="nav-link">Reservations</a>
+        </nav>
+    </header>
+    <main class="main-content">
+        <section class="hero-section">
+            <div class="hero-text">
+                <h1>Welcome to DeskHero</h1>
+                <p>Be the hero of your workday. Reserve your desk with ease, flexibility, and confidence.</p>
+            </div>
+            <div class="hero-image-container">
+                <img src="/static/images/DeskHero1.png" alt="Welcome to DeskHero" class="hero-image" onerror="this.src='https://via.placeholder.com/600x400?text=DeskHero1+Image+Goes+Here'">
+                <div class="image-overlay-actions">
+                    <a href="/reservations" class="btn btn-primary">Reserve Your Desk</a>
+                    <a href="/locations" class="btn btn-secondary" style="background: white;">View Locations</a>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

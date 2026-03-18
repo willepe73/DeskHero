@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeskHero - Locations</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .floorplan-img {
+            max-width: 100%;
+            border-radius: var(--radius-md);
+            margin-top: 1rem;
+            display: none;
+        }
+        .floor-item {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .floor-item:last-child {
+            border-bottom: none;
+        }
+        .view-btn {
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/">
+            <img src="/static/images/DeskHero2.png" alt="DeskHero Logo" class="logo" onerror="this.src='https://via.placeholder.com/200x50?text=DeskHero+Logo'">
+        </a>
+        <nav class="nav-links">
+            <a href="/locations" class="nav-link active">Locations</a>
+            <a href="/reservations" class="nav-link">Reservations</a>
+        </nav>
+    </header>
+    <main class="main-content">
+        <h1 class="page-title">Our Locations</h1>
+        <div id="loading" style="text-align: center; color: var(--text-muted); margin: 2rem 0;">Loading locations...</div>
+        <div class="grid" id="locations-grid"></div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch('/api/v1/locations');
+                const buildings = await res.json();
+                
+                const grid = document.getElementById('locations-grid');
+                document.getElementById('loading').style.display = 'none';
+
+                if (buildings.length === 0) {
+                    grid.innerHTML = '<p>No locations available currently.</p>';
+                    return;
+                }
+
+                buildings.forEach(building => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    
+                    let html = `<h3>${building.name}</h3>`;
+                    
+                    building.floors.forEach(floor => {
+                        html += `
+                            <div class="floor-item">
+                                <strong>Floor ${floor.floor}</strong><br>
+                                ${floor.floorplan_url ? `<button class="btn btn-secondary view-btn" onclick="toggleFloorplan(this)">View Floorplan</button>
+                                <img src="${floor.floorplan_url}" class="floorplan-img" alt="Floorplan">` : '<small>No floorplan available</small>'}
+                            </div>
+                        `;
+                    });
+                    
+                    card.innerHTML = html;
+                    grid.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Failed to fetch locations:', error);
+                document.getElementById('loading').innerText = 'Failed to load locations.';
+            }
+        });
+
+        function toggleFloorplan(btn) {
+            const img = btn.nextElementSibling;
+            if (img.style.display === 'block') {
+                img.style.display = 'none';
+                btn.innerText = 'View Floorplan';
+            } else {
+                img.style.display = 'block';
+                btn.innerText = 'Hide Floorplan';
+            }
+        }
+    </script>
+</body>
+</html>

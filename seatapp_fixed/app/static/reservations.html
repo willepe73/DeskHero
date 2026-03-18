@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeskHero - Reservations</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .res-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+        @media (max-width: 768px) {
+            .res-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .res-list {
+            list-style: none;
+        }
+        .res-item {
+            background: var(--white);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary-color);
+        }
+        .res-item strong {
+            display: block;
+            font-size: 1.125rem;
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/">
+            <img src="/static/images/DeskHero2.png" alt="DeskHero Logo" class="logo" onerror="this.src='https://via.placeholder.com/200x50?text=DeskHero+Logo'">
+        </a>
+        <nav class="nav-links">
+            <a href="/locations" class="nav-link">Locations</a>
+            <a href="/reservations" class="nav-link active">Reservations</a>
+        </nav>
+    </header>
+    <main class="main-content">
+        <h1 class="page-title">Reservations</h1>
+        
+        <div class="res-layout">
+            <div class="card">
+                <h3>Book a Desk</h3>
+                <div id="alertMsg" class="alert"></div>
+                <form id="reservationForm">
+                    <div class="form-group">
+                        <label class="form-label" for="resDate">Date</label>
+                        <input type="date" id="resDate" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="resBuilding">Building</label>
+                        <input type="text" id="resBuilding" class="form-input" placeholder="e.g. Agora" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="resFloor">Floor</label>
+                        <input type="number" id="resFloor" class="form-input" placeholder="e.g. 1" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="resSeat">Seat Number</label>
+                        <input type="number" id="resSeat" class="form-input" placeholder="e.g. 401" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="resName">Your Name</label>
+                        <input type="text" id="resName" class="form-input" placeholder="e.g. Alice" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Create Reservation</button>
+                </form>
+                
+                <div class="mic-container">
+                    <p class="mic-label">Or use your voice to book</p>
+                    <button id="voiceBtn" class="btn btn-mic" title="Start Voice Reservation">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                        </svg>
+                    </button>
+                    <p id="micStatus" class="mic-label" style="display: none;">Listening...</p>
+                    
+                    <div class="lang-container">
+                        <label class="lang-label" for="voiceLang">Voice Language</label>
+                        <select id="voiceLang" class="lang-select">
+                            <option value="en-US">English (US)</option>
+                            <option value="nl-NL">Nederlands (NL)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="card" style="margin-bottom: 2rem;">
+                    <h3>Check Reservations</h3>
+                    <div class="form-group">
+                        <label class="form-label" for="lookupDate">Select Date</label>
+                        <input type="date" id="lookupDate" class="form-input">
+                    </div>
+                </div>
+
+                <div id="loading" style="display:none; text-align: center;">Loading...</div>
+                <ul class="res-list" id="resList"></ul>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Set today's date
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('resDate').value = today;
+        document.getElementById('lookupDate').value = today;
+
+        // Fetch reservations function
+        async function fetchReservations(date) {
+            const list = document.getElementById('resList');
+            const loading = document.getElementById('loading');
+            
+            list.innerHTML = '';
+            loading.style.display = 'block';
+
+            try {
+                const res = await fetch(`/api/v1/reservations?date=${date}`);
+                if (!res.ok) throw new Error('API Error');
+                
+                const data = await res.json();
+                
+                if (data.length === 0) {
+                    list.innerHTML = '<p>No reservations found for this date.</p>';
+                } else {
+                    data.forEach(r => {
+                        const li = document.createElement('li');
+                        li.className = 'res-item';
+                        li.innerHTML = `
+                            <strong>Seat ${r.seat_number} · Floor ${r.floor}</strong>
+                            ${r.building} — Reserved by: ${r.reserved_by || 'Anonymous'}
+                        `;
+                        list.appendChild(li);
+                    });
+                }
+            } catch (err) {
+                list.innerHTML = '<p style="color:red">Failed to load reservations.</p>';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Initialize fetch
+        fetchReservations(today);
+
+        // Fetch on change Date
+        document.getElementById('lookupDate').addEventListener('change', (e) => {
+            fetchReservations(e.target.value);
+        });
+
+        // Create reservation handler (extracted for reuse)
+        async function createReservation(payload) {
+            const alertMsg = document.getElementById('alertMsg');
+            try {
+                const response = await fetch('/api/v1/reservations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+
+                if (response.ok) {
+                    alertMsg.className = 'alert success';
+                    alertMsg.innerText = 'Reservation created successfully!';
+                    
+                    // Refresh the list if looking at the same date
+                    if (payload.date === document.getElementById('lookupDate').value) {
+                        fetchReservations(payload.date);
+                    }
+                    return true;
+                } else {
+                    alertMsg.className = 'alert error';
+                    alertMsg.innerText = result.detail || 'Error creating reservation. Check building/seat exists.';
+                    return false;
+                }
+            } catch (err) {
+                alertMsg.className = 'alert error';
+                alertMsg.innerText = 'Server connection error.';
+                return false;
+            }
+        }
+
+        // Voice Reservation Logic
+        const voiceBtn = document.getElementById('voiceBtn');
+        const micStatus = document.getElementById('micStatus');
+
+        voiceBtn.addEventListener('click', async () => {
+            // UI Feedback
+            voiceBtn.classList.add('listening');
+            micStatus.style.display = 'block';
+            document.getElementById('alertMsg').style.display = 'none';
+
+            const language = document.getElementById('voiceLang').value;
+
+            try {
+                // Call our new backend endpoint that triggers the voice agent
+                const response = await fetch(`/api/v1/voice-reservation?language=${language}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // Success! Fill the form for visual feedback
+                    document.getElementById('resBuilding').value = result.data.building;
+                    document.getElementById('resFloor').value = result.data.floor;
+                    document.getElementById('resSeat').value = result.data.seat_number;
+                    document.getElementById('resDate').value = result.data.date;
+                    document.getElementById('resName').value = result.data.reserved_by;
+
+                    // Automatically submit the reservation
+                    await createReservation(result.data);
+                } else {
+                    const alertMsg = document.getElementById('alertMsg');
+                    alertMsg.className = 'alert error';
+                    alertMsg.innerText = result.message || 'Speech not understood.';
+                    if (result.transcript) {
+                        alertMsg.innerText += ` Heard: "${result.transcript}"`;
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                const alertMsg = document.getElementById('alertMsg');
+                alertMsg.className = 'alert error';
+                alertMsg.innerText = 'Voice Agent error. Make sure server is running locally.';
+            } finally {
+                voiceBtn.classList.remove('listening');
+                micStatus.style.display = 'none';
+            }
+        });
+
+        // Submit new reservation form
+        document.getElementById('reservationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                building: document.getElementById('resBuilding').value,
+                floor: parseInt(document.getElementById('resFloor').value),
+                seat_number: parseInt(document.getElementById('resSeat').value),
+                date: document.getElementById('resDate').value,
+                reserved_by: document.getElementById('resName').value
+            };
+
+            await createReservation(payload);
+        });
+    </script>
+</body>
+</html>
